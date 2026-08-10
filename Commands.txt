@@ -1,0 +1,19 @@
+git config --global user.name "sm"
+git config --global user.email "contact.smtanvir@gmail.com"
+git init
+git add -A
+git commit -m "Commited by SM"
+git branch -M main
+git remote add origin https://github.com/seddike-tanvir/InteSense.git
+git push -u origin main --force
+
+git pull https://github.com/seddike-tanvir/InteSense.git main
+
+---------------
+
+After first time:-
+
+git add -A
+git commit -m "Commited by SM"
+git branch -M main
+git push -u origin main
