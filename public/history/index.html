@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intesense - ইতিহাস</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div class="container mx-auto px-4 py-6 max-w-7xl">
+
+    <!-- নেভ -->
+    <div class="flex flex-wrap items-center justify-between mb-6">
+      <h1 class="text-3xl font-bold text-indigo-900">📜 ইতিহাস</h1>
+      <div class="flex gap-3">
+        <a href="/" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-full font-semibold hover:bg-gray-200 transition">📊 ড্যাশবোর্ড</a>
+        <a href="/history/" class="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-full font-semibold hover:bg-indigo-200 transition">📜 ইতিহাস</a>
+        <a href="/settings/" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-full font-semibold hover:bg-gray-200 transition">⚙️ সেটিংস</a>
+      </div>
+    </div>
+
+    <!-- ফিল্টার -->
+    <div class="bg-white p-4 rounded-xl shadow-md mb-6 flex flex-wrap items-end gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">ফিল্টার রেঞ্জ</label>
+        <select id="filterRange" class="mt-1 p-2 border border-gray-300 rounded-lg">
+          <option value="1h">গত ১ ঘন্টা</option>
+          <option value="6h" selected>গত ৬ ঘন্টা</option>
+          <option value="24h">গত ২৪ ঘন্টা</option>
+          <option value="7d">গত ৭ দিন</option>
+          <option value="all">সব</option>
+        </select>
+      </div>
+      <button onclick="loadHistory()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">🔍 লোড করুন</button>
+      <span id="recordCount" class="text-sm text-gray-500 ml-auto"></span>
+    </div>
+
+    <!-- চার্ট -->
+    <div class="bg-white p-4 rounded-xl shadow-md mb-6">
+      <h3 class="font-semibold text-gray-700 mb-2">📈 ঐতিহাসিক ডাটা</h3>
+      <canvas id="historyChart" height="200"></canvas>
+    </div>
+
+    <!-- টেবিল -->
+    <div class="bg-white p-4 rounded-xl shadow-md overflow-x-auto">
+      <h3 class="font-semibold text-gray-700 mb-2">📋 বিস্তারিত তালিকা</h3>
+      <div id="tableContainer" class="max-h-96 overflow-y-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50 sticky top-0">
+            <tr>
+              <th class="px-4 py-2 text-left">সময়</th>
+              <th class="px-4 py-2 text-left">🌡️ তাপমাত্রা</th>
+              <th class="px-4 py-2 text-left">💧 আর্দ্রতা</th>
+              <th class="px-4 py-2 text-left">🔥 ধোঁয়া</th>
+              <th class="px-4 py-2 text-left">🔥 শিখা</th>
+              <th class="px-4 py-2 text-left">🚶 গতি</th>
+              <th class="px-4 py-2 text-left">🚨 অ্যালার্ম</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA8WKGXIAioDQ14Q_z1XpaJvCUkTvBD6_I",
+      authDomain: "intesense-ae5aa.firebaseapp.com",
+      databaseURL: "https://intesense-ae5aa-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "intesense-ae5aa",
+      storageBucket: "intesense-ae5aa.firebasestorage.app",
+      messagingSenderId: "945696306096",
+      appId: "1:945696306096:web:571d1726277182b0f35c75",
+      measurementId: "G-H9VJCRJWD2"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let chartInstance = null;
+
+    function getTimeFilter() {
+      const val = document.getElementById('filterRange').value;
+      const now = Date.now();
+      const ms = { '1h': 3600000, '6h': 21600000, '24h': 86400000, '7d': 604800000 };
+      if (val === 'all') return 0;
+      return now - (ms[val] || 0);
+    }
+
+    function loadHistory() {
+      const minTime = getTimeFilter();
+      db.ref('/history').once('value').then(snap => {
+        const data = snap.val();
+        if (!data) {
+          document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">কোনো ডাটা নেই</td></tr>';
+          document.getElementById('recordCount').textContent = '';
+          return;
+        }
+
+        const keys = Object.keys(data).sort((a,b) => a.localeCompare(b));
+        const filtered = keys.filter(k => {
+          const ts = data[k].timestamp || 0;
+          return minTime === 0 || ts >= minTime;
+        });
+
+        document.getElementById('recordCount').textContent = `মোট ${filtered.length} টি রেকর্ড দেখানো হচ্ছে`;
+
+        // টেবিল
+        const tbody = document.getElementById('historyTableBody');
+        tbody.innerHTML = filtered.map(k => {
+          const d = data[k];
+          const time = new Date(d.timestamp).toLocaleString();
+          return `<tr>
+            <td class="px-4 py-2 whitespace-nowrap">${time}</td>
+            <td class="px-4 py-2">${d.temperature?.toFixed(1) ?? '--'}</td>
+            <td class="px-4 py-2">${d.humidity?.toFixed(1) ?? '--'}</td>
+            <td class="px-4 py-2">${d.smoke ?? '--'}</td>
+            <td class="px-4 py-2">${d.flame ? '🔥 হ্যাঁ' : '✅ না'}</td>
+            <td class="px-4 py-2">${d.motion ? '🚶 হ্যাঁ' : '⏸️ না'}</td>
+            <td class="px-4 py-2 ${d.alarm ? 'text-red-600 font-bold' : 'text-green-600'}">${d.alarm ? '🚨 অ্যালার্ম' : '✅ স্বাভাবিক'}</td>
+          </tr>`;
+        }).join('');
+
+        // চার্ট
+        const labels = filtered.map(k => new Date(data[k].timestamp).toLocaleTimeString());
+        const tempData = filtered.map(k => data[k].temperature || 0);<!DOCTYPE html>
+<html lang="bn" id="htmlRoot">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intesense - ইতিহাস</title>
+
+  <link rel="stylesheet" href="https://fonts.maateen.me/siyam-rupali/font.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-body: #f1f5f9; --bg-card: #ffffff; --bg-header: #ffffff;
+      --text-primary: #1e293b; --text-secondary: #475569;
+      --border-color: #e2e8f0; --shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08); --nav-bg: #f8fafc;
+    }
+    .dark {
+      --bg-body: #0f172a; --bg-card: #1e293b; --bg-header: #1e293b;
+      --text-primary: #f1f5f9; --text-secondary: #94a3b8;
+      --border-color: #334155; --shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.6); --nav-bg: #1e293b;
+    }
+    body { font-family: 'Siyam Rupali', 'Noto Serif Bengali', serif; background: var(--bg-body); color: var(--text-primary); min-height: 100vh; }
+    .card { background: var(--bg-card); border: 1px solid var(--border-color); box-shadow: var(--shadow); border-radius: 16px; }
+    .header-card { background: var(--bg-header); border-bottom: 1px solid var(--border-color); }
+    .nav-link { background: var(--nav-bg); color: var(--text-secondary); border: 1px solid var(--border-color); }
+    .nav-link.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+    .nav-link:hover:not(.active) { background: var(--border-color); }
+    .toggle-checkbox:checked + .toggle-label { background-color: #4f46e5; }
+    .toggle-checkbox:checked + .toggle-label .toggle-dot { transform: translateX(100%); background-color: white; }
+    .toggle-label { display: flex; align-items: center; justify-content: space-between; width: 52px; height: 28px; padding: 3px; border-radius: 9999px; background-color: #cbd5e1; cursor: pointer; transition: background-color 0.2s; position: relative; }
+    .toggle-dot { width: 22px; height: 22px; border-radius: 9999px; background-color: white; transition: transform 0.2s; position: absolute; left: 3px; top: 3px; }
+    .dark .toggle-label { background-color: #475569; }
+    * { transition: background-color 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.3s; }
+    #tableContainer::-webkit-scrollbar { width: 4px; }
+    #tableContainer::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 8px; }
+  </style>
+</head>
+<body>
+
+  <!-- হেডার ও নেভ -->
+  <div class="header-card sticky top-0 z-40 backdrop-blur-sm bg-opacity-80">
+    <div class="container mx-auto px-4 py-4 max-w-7xl flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-2xl md:text-3xl font-bold text-indigo-700 dark:text-indigo-400">📜 ইতিহাস</h1>
+      <div class="flex items-center gap-4">
+        <div class="flex gap-2 text-sm font-medium">
+          <a href="./" class="nav-link px-4 py-2 rounded-full transition">📊 ড্যাশবোর্ড</a>
+          <a href="./history/" class="nav-link active px-4 py-2 rounded-full transition">📜 ইতিহাস</a>
+          <a href="./settings/" class="nav-link px-4 py-2 rounded-full transition">⚙️ সেটিংস</a>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-gray-500 dark:text-gray-400">☀️</span>
+          <input type="checkbox" id="themeToggle" class="toggle-checkbox hidden" />
+          <label for="themeToggle" class="toggle-label relative"><span class="toggle-dot"></span></label>
+          <span class="text-sm text-gray-500 dark:text-gray-400">🌙</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- কন্টেন্ট -->
+  <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <div class="card p-4 mb-6 flex flex-wrap items-end gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">ফিল্টার রেঞ্জ</label>
+        <select id="filterRange" class="mt-1 p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+          <option value="1h">গত ১ ঘন্টা</option>
+          <option value="6h" selected>গত ৬ ঘন্টা</option>
+          <option value="24h">গত ২৪ ঘন্টা</option>
+          <option value="7d">গত ৭ দিন</option>
+          <option value="all">সব</option>
+        </select>
+      </div>
+      <button onclick="loadHistory()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">🔍 লোড করুন</button>
+      <span id="recordCount" class="text-sm text-gray-500 dark:text-gray-400 ml-auto"></span>
+    </div>
+
+    <div class="card p-4 mb-6"><h3 class="font-semibold mb-2 text-gray-700 dark:text-gray-300">📈 ঐতিহাসিক ডাটা</h3><canvas id="historyChart" height="200"></canvas></div>
+    <div class="card p-4 overflow-x-auto"><h3 class="font-semibold mb-2 text-gray-700 dark:text-gray-300">📋 বিস্তারিত তালিকা</h3>
+      <div id="tableContainer" class="max-h-96 overflow-y-auto">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+          <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0"><tr>
+            <th class="px-4 py-2 text-left">সময়</th><th class="px-4 py-2 text-left">🌡️ তাপমাত্রা</th>
+            <th class="px-4 py-2 text-left">💧 আর্দ্রতা</th><th class="px-4 py-2 text-left">🔥 ধোঁয়া</th>
+            <th class="px-4 py-2 text-left">🔥 শিখা</th><th class="px-4 py-2 text-left">🚶 গতি</th>
+            <th class="px-4 py-2 text-left">🚨 অ্যালার্ম</th>
+          </tr></thead>
+          <tbody id="historyTableBody" class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="text-center text-xs text-gray-400 dark:text-gray-600 py-6 border-t border-gray-200 dark:border-gray-800 mt-8">
+    &copy; ২০২৬ ইন্টেসেন্স - স্মার্ট আইওটি ফায়ার মনিটরিং সিস্টেম
+  </div>
+
+  <script>
+    const firebaseConfig = { apiKey: "AIzaSyA8WKGXIAioDQ14Q_z1XpaJvCUkTvBD6_I", authDomain: "intesense-ae5aa.firebaseapp.com", databaseURL: "https://intesense-ae5aa-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "intesense-ae5aa", storageBucket: "intesense-ae5aa.firebasestorage.app", messagingSenderId: "945696306096", appId: "1:945696306096:web:571d1726277182b0f35c75", measurementId: "G-H9VJCRJWD2" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // থিম
+    const htmlRoot = document.getElementById('htmlRoot');
+    const toggle = document.getElementById('themeToggle');
+    function setTheme(dark) { if(dark){ htmlRoot.classList.add('dark'); toggle.checked=true; localStorage.setItem('theme','dark'); } else { htmlRoot.classList.remove('dark'); toggle.checked=false; localStorage.setItem('theme','light'); } }
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') setTheme(true); else setTheme(false);
+    toggle.addEventListener('change', function() { setTheme(this.checked); });
+
+    let chartInstance = null;
+    function getTimeFilter() {
+      const val = document.getElementById('filterRange').value;
+      const now = Date.now();
+      const ms = { '1h': 3600000, '6h': 21600000, '24h': 86400000, '7d': 604800000 };
+      if (val === 'all') return 0;
+      return now - (ms[val] || 0);
+    }
+
+    function loadHistory() {
+      const minTime = getTimeFilter();
+      db.ref('/history').once('value').then(snap => {
+        const data = snap.val();
+        if (!data) { document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">কোনো ডাটা নেই</td></tr>'; document.getElementById('recordCount').textContent = ''; return; }
+        const keys = Object.keys(data).sort((a,b) => a.localeCompare(b));
+        const filtered = keys.filter(k => { const ts = data[k].timestamp || 0; return minTime === 0 || ts >= minTime; });
+        document.getElementById('recordCount').textContent = `মোট ${filtered.length} টি রেকর্ড দেখানো হচ্ছে`;
+        const tbody = document.getElementById('historyTableBody');
+        tbody.innerHTML = filtered.map(k => {
+          const d = data[k];
+          const time = new Date(d.timestamp).toLocaleString('bn-BD');
+          return `<tr><td class="px-4 py-2 whitespace-nowrap">${time}</td><td class="px-4 py-2">${d.temperature?.toFixed(1)??'--'}</td><td class="px-4 py-2">${d.humidity?.toFixed(1)??'--'}</td><td class="px-4 py-2">${d.smoke??'--'}</td><td class="px-4 py-2">${d.flame?'🔥 হ্যাঁ':'✅ না'}</td><td class="px-4 py-2">${d.motion?'🚶 হ্যাঁ':'⏸️ না'}</td><td class="px-4 py-2 ${d.alarm?'text-red-600 font-bold':'text-green-600'}">${d.alarm?'🚨 অ্যালার্ম':'✅ স্বাভাবিক'}</td></tr>`;
+        }).join('');
+        const labels = filtered.map(k => new Date(data[k].timestamp).toLocaleTimeString('bn-BD'));
+        const tempData = filtered.map(k => data[k].temperature || 0);
+        const humData = filtered.map(k => data[k].humidity || 0);
+        const smokeData = filtered.map(k => data[k].smoke || 0);
+        if (chartInstance) chartInstance.destroy();
+        const ctx = document.getElementById('historyChart').getContext('2d');
+        chartInstance = new Chart(ctx, {
+          type: 'line',
+          data: { labels, datasets: [
+            { label: 'তাপমাত্রা (°C)', data: tempData, borderColor: '#ef4444', yAxisID: 'y1' },
+            { label: 'আর্দ্রতা (%)', data: humData, borderColor: '#3b82f6', yAxisID: 'y2' },
+            { label: 'ধোঁয়া (ADC)', data: smokeData, borderColor: '#f59e0b', yAxisID: 'y1' }
+          ]},
+          options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y1: { beginAtZero: true, position: 'left' }, y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } } } }
+        });
+      }).catch(err => console.error(err));
+    }
+    window.onload = function() { loadHistory(); document.getElementById('filterRange').addEventListener('change', loadHistory); };
+  </script>
+</body>
+</html>
+        const humData = filtered.map(k => data[k].humidity || 0);
+        const smokeData = filtered.map(k => data[k].smoke || 0);
+
+        if (chartInstance) chartInstance.destroy();
+
+        const ctx = document.getElementById('historyChart').getContext('2d');
+        chartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: 'তাপমাত্রা (°C)', data: tempData, borderColor: '#ef4444', yAxisID: 'y1' },
+              { label: 'আর্দ্রতা (%)', data: humData, borderColor: '#3b82f6', yAxisID: 'y2' },
+              { label: 'ধোঁয়া (ADC)', data: smokeData, borderColor: '#f59e0b', yAxisID: 'y1' }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: 'top' } },
+            scales: {
+              y1: { beginAtZero: true, position: 'left' },
+              y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
+            }
+          }
+        });
+      }).catch(err => console.error(err));
+    }
+
+    window.onload = function() {
+      loadHistory();
+      document.getElementById('filterRange').addEventListener('change', loadHistory);
+    };
+  </script>
+</body>
+</html>

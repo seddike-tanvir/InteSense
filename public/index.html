@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="bn" id="htmlRoot">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intesense - Dashboard</title>
+
+  <!-- ফন্ট -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://fonts.maateen.me/siyam-rupali/font.css" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    /* ===== থিম ভেরিয়েবল ===== */
+    :root {
+      --bg-body: #f1f5f9;
+      --bg-card: #ffffff;
+      --bg-header: rgba(255, 255, 255, 0.85);
+      --text-primary: #1e293b;
+      --text-secondary: #475569;
+      --border-color: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+      --nav-bg: #f8fafc;
+    }
+
+    .dark {
+      --bg-body: #0f172a;
+      --bg-card: #1e293b;
+      --bg-header: rgba(30, 41, 59, 0.9);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --border-color: #334155;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+      --nav-bg: #1e293b;
+    }
+
+    /* ===== গ্লোবাল ===== */
+    * {
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    body {
+      font-family: 'Siyam Rupali', 'Noto Serif Bengali', serif;
+      background: var(--bg-body);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    .lang-en body {
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow);
+      border-radius: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-3px);
+    }
+
+    .header-card {
+      background: var(--bg-header);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .nav-link {
+      background: var(--nav-bg);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      transition: all 0.2s;
+    }
+
+    .nav-link.active {
+      background: #4f46e5;
+      color: white;
+      border-color: #4f46e5;
+    }
+
+    .nav-link:hover:not(.active) {
+      background: var(--border-color);
+    }
+
+    /* ===== টগল সুইচ (থিম) ===== */
+    .toggle-checkbox:checked + .toggle-label {
+      background-color: #4f46e5;
+    }
+    .toggle-checkbox:checked + .toggle-label .toggle-dot {
+      transform: translateX(100%);
+      background-color: white;
+    }
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 52px;
+      height: 28px;
+      padding: 3px;
+      border-radius: 9999px;
+      background-color: #cbd5e1;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      position: relative;
+    }
+    .toggle-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 9999px;
+      background-color: white;
+      transition: transform 0.2s;
+      position: absolute;
+      left: 3px;
+      top: 3px;
+    }
+    .dark .toggle-label {
+      background-color: #475569;
+    }
+
+    /* ===== ল্যাঙ্গুয়েজ টগল বাটন ===== */
+    .lang-btn {
+      background: var(--nav-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .lang-btn:hover {
+      background: var(--border-color);
+    }
+    .lang-btn.active-lang {
+      background: #4f46e5;
+      color: white;
+      border-color: #4f46e5;
+    }
+
+    /* ===== অ্যালার্ট পপআপ ===== */
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .alert-popup {
+      animation: slideIn 0.4s ease-out;
+    }
+
+    /* ===== স্ক্রলবার ===== */
+    #eventLog::-webkit-scrollbar { width: 4px; }
+    #eventLog::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 8px; }
+
+    /* ===== চার্ট কন্টেইনার ===== */
+    .chart-container {
+      position: relative;
+      height: 160px;
+    }
+
+    /* ===== ডার্ক মোডে চার্ট টেক্সট ===== */
+    .dark .chart-container canvas {
+      filter: brightness(0.9);
+    }
+
+    /* ছোট ডিভাইসে কার্ডের ফন্ট সাইজ */
+    @media (max-width: 640px) {
+      .card .value {
+        font-size: 1.5rem;
+      }
+    }
+
+    /* ফুটারের লিংক স্টাইল */
+    .footer-link {
+      color: var(--text-secondary);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      transition: color 0.2s;
+    }
+    .footer-link:hover {
+      color: #4f46e5;
+    }
+    .dark .footer-link:hover {
+      color: #818cf8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== অ্যালার্ট পপআপ ===== -->
+  <div id="alertPopup" class="fixed top-5 right-5 bg-red-600 text-white px-6 py-4 rounded-lg shadow-xl z-50 hidden alert-popup max-w-sm">
+    <div class="flex items-center justify-between">
+      <span id="alertMessage" class="font-semibold">🚨 অ্যালার্ম!</span>
+      <button onclick="dismissAlert()" class="ml-4 text-xl font-bold hover:text-gray-200">&times;</button>
+    </div>
+  </div>
+
+  <!-- ===== হেডার ===== -->
+  <div class="header-card sticky top-0 z-40">
+    <div class="container mx-auto px-4 py-3 max-w-7xl flex flex-wrap items-center justify-between gap-3">
+      <!-- লোগো -->
+      <div class="flex items-center gap-3">
+        <span class="text-2xl md:text-3xl font-bold text-indigo-700 dark:text-indigo-400 tracking-tight">
+          Intesense
+        </span>
+        <span id="statusBadge" class="text-xs bg-green-500 text-white px-3 py-1 rounded-full">🟢 Online</span>
+      </div>
+
+      <div class="flex items-center gap-3 flex-wrap">
+        <!-- নেভ -->
+        <div class="flex gap-1 text-sm font-medium">
+          <a href="/" class="nav-link active px-3 py-1.5 rounded-full transition">📊 <span data-i18n="nav_dashboard">ড্যাশবোর্ড</span></a>
+          <a href="/history/" class="nav-link px-3 py-1.5 rounded-full transition">📜 <span data-i18n="nav_history">ইতিহাস</span></a>
+          <a href="/settings/" class="nav-link px-3 py-1.5 rounded-full transition">⚙️ <span data-i18n="nav_settings">সেটিংস</span></a>
+        </div>
+
+        <!-- ল্যাঙ্গুয়েজ টগল -->
+        <div class="flex items-center gap-1 border-l border-gray-300 dark:border-gray-700 pl-3">
+          <button id="langBn" class="lang-btn active-lang" data-lang="bn">বাং</button>
+          <button id="langEn" class="lang-btn" data-lang="en">EN</button>
+        </div>
+
+        <!-- থিম টগল -->
+        <div class="flex items-center gap-1 ml-1">
+          <span class="text-sm text-gray-500 dark:text-gray-400">☀️</span>
+          <input type="checkbox" id="themeToggle" class="toggle-checkbox hidden" />
+          <label for="themeToggle" class="toggle-label relative">
+            <span class="toggle-dot"></span>
+          </label>
+          <span class="text-sm text-gray-500 dark:text-gray-400">🌙</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== প্রধান কন্টেইনার ===== -->
+  <div class="container mx-auto px-4 py-6 max-w-7xl">
+
+    <!-- কার্ড গ্রিড – ৬টি -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div class="card p-4 text-center border-l-4 border-red-500">
+        <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_temp">তাপমাত্রা</div>
+        <div id="tempVal" class="text-2xl font-bold value">--</div>
+        <div class="text-xs text-gray-400">°C</div>
+      </div>
+      <div class="card p-4 text-center border-l-4 border-blue-500">
+        <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_humidity">আর্দ্রতা</div>
+        <div id="humVal" class="text-2xl font-bold value">--</div>
+        <div class="text-xs text-gray-400">%</div>
+      </div>
+      <div class="card p-4 text-center border-l-4 border-orange-500">
+        <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_smoke">ধোঁয়া/গ্যাস</div>
+        <div id="smokeVal" class="text-2xl font-bold value">--</div>
+        <div class="text-xs text-gray-400">ADC</div>
+      </div>
+      <div class="card p-4 text-center border-l-4 border-yellow-500">
+        <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_flame">শিখা</div>
+        <div id="flameVal" class="text-lg font-bold">✅ <span data-i18n="safe">নিরাপদ</span></div>
+      </div>
+      <div class="card p-4 text-center border-l-4 border-purple-500">
+        <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_motion">গতি</div>
+        <div id="motionVal" class="text-lg font-bold">⏸️ <span data-i18n="static">স্থির</span></div>
+      </div>
+      <div class="card p-4 text-center border-l-4 border-red-600">
+        <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_alarm">অ্যালার্ম</div>
+        <div id="alarmVal" class="text-lg font-bold">✅ <span data-i18n="normal">স্বাভাবিক</span></div>
+      </div>
+    </div>
+
+    <!-- গ্রাফ সেকশন – উন্নত ডিজাইন -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <!-- তাপমাত্রা -->
+      <div class="card p-4">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="font-semibold text-gray-700 dark:text-gray-300" data-i18n="chart_temp">🌡️ তাপমাত্রা (শেষ ২০টি)</h3>
+          <span class="text-xs text-gray-400">°C</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="tempChart"></canvas>
+        </div>
+      </div>
+      <!-- আর্দ্রতা -->
+      <div class="card p-4">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="font-semibold text-gray-700 dark:text-gray-300" data-i18n="chart_humidity">💧 আর্দ্রতা (শেষ ২০টি)</h3>
+          <span class="text-xs text-gray-400">%</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="humChart"></canvas>
+        </div>
+      </div>
+      <!-- ধোঁয়া -->
+      <div class="card p-4">
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="font-semibold text-gray-700 dark:text-gray-300" data-i18n="chart_smoke">🔥 ধোঁয়া/গ্যাস (শেষ ২০টি)</h3>
+          <span class="text-xs text-gray-400">ADC</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="smokeChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ইভেন্ট লগ ও বিস্তারিত -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="card p-4">
+        <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-2" data-i18n="event_log">📋 ইভেন্ট লগ</h3>
+        <div id="eventLog" class="h-48 overflow-y-auto text-sm space-y-1"></div>
+      </div>
+      <div class="card p-4 flex flex-col justify-center items-center text-center">
+        <div class="text-4xl mb-2">📊</div>
+        <p class="text-sm text-gray-500 dark:text-gray-400" data-i18n="stats_info">
+          সর্বশেষ আপডেট: <span id="lastUpdate">--</span>
+        </p>
+        <p class="text-xs text-gray-400 mt-1" data-i18n="stats_sub">রিয়েল-টাইম ডাটা ফায়ারবেস থেকে সংগৃহীত</p>
+      </div>
+    </div>
+
+    <!-- ===== ফুটার (আপডেট) ===== -->
+    <div class="text-center text-xs text-gray-400 dark:text-gray-600 py-6 border-t border-gray-200 dark:border-gray-800 mt-8 space-y-1">
+      <div data-i18n="footer"></div>
+      <div data-i18n="license"></div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- ফায়ারবেস কনফিগ -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA8WKGXIAioDQ14Q_z1XpaJvCUkTvBD6_I",
+      authDomain: "intesense-ae5aa.firebaseapp.com",
+      databaseURL: "https://intesense-ae5aa-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "intesense-ae5aa",
+      storageBucket: "intesense-ae5aa.firebasestorage.app",
+      messagingSenderId: "945696306096",
+      appId: "1:945696306096:web:571d1726277182b0f35c75",
+      measurementId: "G-H9VJCRJWD2"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+  </script>
+
+  <!-- ========================================================= -->
+  <!-- মূল জেএস – ল্যাঙ্গুয়েজ, থিম, চার্ট, ডাটা লোড -->
+  <script>
+    // =========================================================
+    // ১. ল্যাঙ্গুয়েজ ডেটা (আপডেটেড ফুটার ও লাইসেন্স)
+    // =========================================================
+    const translations = {
+      bn: {
+        nav_dashboard: 'ড্যাশবোর্ড',
+        nav_history: 'ইতিহাস',
+        nav_settings: 'সেটিংস',
+        card_temp: 'তাপমাত্রা',
+        card_humidity: 'আর্দ্রতা',
+        card_smoke: 'ধোঁয়া/গ্যাস',
+        card_flame: 'শিখা',
+        card_motion: 'গতি',
+        card_alarm: 'অ্যালার্ম',
+        safe: 'নিরাপদ',
+        static: 'স্থির',
+        normal: 'স্বাভাবিক',
+        chart_temp: '🌡️ তাপমাত্রা (শেষ ২০টি)',
+        chart_humidity: '💧 আর্দ্রতা (শেষ ২০টি)',
+        chart_smoke: '🔥 ধোঁয়া/গ্যাস (শেষ ২০টি)',
+        event_log: '📋 ইভেন্ট লগ',
+        stats_info: 'সর্বশেষ আপডেট:',
+        stats_sub: 'রিয়েল-টাইম ডাটা ফায়ারবেস থেকে সংগৃহীত',
+        footer: '© ২০২৬ ইন্টেসেন্স · <a href="https://tanvirseddike.web.app/" target="_blank" rel="noopener noreferrer" class="footer-link">তানভীর সিদ্দিকী</a> কর্তৃক সর্বস্বত্ব সংরক্ষিত।',
+        license: 'লাইসেন্স: GPL সংস্করণ ৩',
+        alarm_msg: '🚨 অ্যালার্ম! আগুন/বিপদ শনাক্ত হয়েছে!',
+        flame_detected: 'শিখা শনাক্ত!',
+        motion_detected: 'গতি শনাক্ত!',
+        alarm_active: 'অ্যালার্ম!',
+        online: 'অনলাইন',
+        offline: 'অফলাইন',
+        no_events: 'কোনো ইভেন্ট নেই'
+      },
+      en: {
+        nav_dashboard: 'Dashboard',
+        nav_history: 'History',
+        nav_settings: 'Settings',
+        card_temp: 'Temperature',
+        card_humidity: 'Humidity',
+        card_smoke: 'Smoke/Gas',
+        card_flame: 'Flame',
+        card_motion: 'Motion',
+        card_alarm: 'Alarm',
+        safe: 'Safe',
+        static: 'Static',
+        normal: 'Normal',
+        chart_temp: '🌡️ Temperature (last 20)',
+        chart_humidity: '💧 Humidity (last 20)',
+        chart_smoke: '🔥 Smoke/Gas (last 20)',
+        event_log: '📋 Event Log',
+        stats_info: 'Last update:',
+        stats_sub: 'Real-time data from Firebase',
+        footer: '© 2026 InteSense · All rights reserved by <a href="https://tanvirseddike.web.app/" target="_blank" rel="noopener noreferrer" class="footer-link">Tanvir Seddike</a>',
+        license: 'Licensed under GPL v3',
+        alarm_msg: '🚨 Alarm! Fire/danger detected!',
+        flame_detected: 'Flame detected!',
+        motion_detected: 'Motion detected!',
+        alarm_active: 'ALARM!',
+        online: 'Online',
+        offline: 'Offline',
+        no_events: 'No events'
+      }
+    };
+
+    let currentLang = localStorage.getItem('lang') || 'bn';
+
+    // =========================================================
+    // ২. ল্যাঙ্গুয়েজ টগল ফাংশন (innerHTML দিয়ে আপডেট)
+    // =========================================================
+    function setLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('lang', lang);
+      document.documentElement.lang = lang === 'bn' ? 'bn' : 'en';
+      document.body.classList.toggle('lang-en', lang === 'en');
+      document.getElementById('langBn').classList.toggle('active-lang', lang === 'bn');
+      document.getElementById('langEn').classList.toggle('active-lang', lang === 'en');
+
+      // সব i18n এলিমেন্ট আপডেট (innerHTML ব্যবহার)
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key]) {
+          el.innerHTML = translations[lang][key];
+        }
+      });
+
+      // স্ট্যাটাস ব্যাজ আপডেট
+      updateStatusBadgeText();
+
+      // অ্যালার্ট মেসেজ আপডেট (যদি দৃশ্যমান)
+      const alertMsg = document.getElementById('alertMessage');
+      if (!document.getElementById('alertPopup').classList.contains('hidden')) {
+        alertMsg.textContent = translations[lang].alarm_msg;
+      }
+    }
+
+    // =========================================================
+    // ৩. থিম ম্যানেজার
+    // =========================================================
+    const htmlRoot = document.getElementById('htmlRoot');
+    const themeToggle = document.getElementById('themeToggle');
+
+    function setTheme(dark) {
+      if (dark) {
+        htmlRoot.classList.add('dark');
+        themeToggle.checked = true;
+        localStorage.setItem('theme', 'dark');
+      } else {
+        htmlRoot.classList.remove('dark');
+        themeToggle.checked = false;
+        localStorage.setItem('theme', 'light');
+      }
+    }
+
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') setTheme(true);
+    else setTheme(false);
+
+    themeToggle.addEventListener('change', function() {
+      setTheme(this.checked);
+    });
+
+    // =========================================================
+    // ৪. স্ট্যাটাস ব্যাজ আপডেট (অনলাইন/অফলাইন)
+    // =========================================================
+    function updateStatusBadgeText() {
+      const badge = document.getElementById('statusBadge');
+      const online = (typeof firebaseReady !== 'undefined' && firebaseReady) ? true : false;
+      // আমরা ডাটা আপডেটের সময় এটি সেট করব, তাই এখানে কিছু করছি না
+    }
+
+    // =========================================================
+    // ৫. চার্ট ইনিশিয়ালাইজ
+    // =========================================================
+    let tempChart, humChart, smokeChart;
+    const MAX = 20;
+    let labels = [], tempData = [], humData = [], smokeData = [];
+
+    function initCharts() {
+      const commonOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            cornerRadius: 8
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { font: { size: 9 }, maxTicksLimit: 10 }
+          },
+          y: {
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            beginAtZero: true,
+            ticks: { font: { size: 9 } }
+          }
+        },
+        elements: {
+          line: { tension: 0.3, borderWidth: 2 },
+          point: { radius: 2, hoverRadius: 5 }
+        }
+      };
+
+      tempChart = new Chart(document.getElementById('tempChart'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{ data: tempData, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true }]
+        },
+        options: commonOpts
+      });
+      humChart = new Chart(document.getElementById('humChart'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{ data: humData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true }]
+        },
+        options: commonOpts
+      });
+      smokeChart = new Chart(document.getElementById('smokeChart'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{ data: smokeData, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', fill: true }]
+        },
+        options: commonOpts
+      });
+    }
+
+    // =========================================================
+    // ৬. ডাটা আপডেট ও UI রিফ্রেশ
+    // =========================================================
+    function updateUI(data) {
+      if (!data) return;
+      const cur = data.current || {};
+      // কার্ড ভ্যালু
+      document.getElementById('tempVal').textContent = cur.temperature?.toFixed(1) ?? '--';
+      document.getElementById('humVal').textContent = cur.humidity?.toFixed(1) ?? '--';
+      document.getElementById('smokeVal').textContent = cur.smoke ?? '--';
+
+      // শিখা, গতি, অ্যালার্ম (ল্যাঙ্গুয়েজ অনুসারে)
+      const lang = currentLang;
+      const flameText = cur.flame ? translations[lang].flame_detected : translations[lang].safe;
+      document.getElementById('flameVal').innerHTML = cur.flame ? '🔥 ' + flameText : '✅ ' + flameText;
+
+      const motionText = cur.motion ? translations[lang].motion_detected : translations[lang].static;
+      document.getElementById('motionVal').innerHTML = cur.motion ? '🚶 ' + motionText : '⏸️ ' + motionText;
+
+      const alarmText = cur.alarm ? translations[lang].alarm_active : translations[lang].normal;
+      document.getElementById('alarmVal').innerHTML = cur.alarm ? '🔴 ' + alarmText : '✅ ' + alarmText;
+
+      // শেষ আপডেট
+      document.getElementById('lastUpdate').textContent = new Date().toLocaleString(currentLang === 'bn' ? 'bn-BD' : 'en-US');
+
+      // স্ট্যাটাস ব্যাজ
+      const badge = document.getElementById('statusBadge');
+      const online = cur.online === true;
+      const statusText = online ? translations[lang].online : translations[lang].offline;
+      badge.textContent = online ? '🟢 ' + statusText : '🔴 ' + statusText;
+      badge.className = `text-xs px-3 py-1 rounded-full ${online ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
+
+      // অ্যালার্ট পপআপ
+      if (cur.alarm) {
+        showAlert(translations[lang].alarm_msg);
+      } else {
+        // অ্যালার্ট শেষ হলে পপআপ বন্ধ করুন (যদি খোলা থাকে)
+        if (!document.getElementById('alertPopup').classList.contains('hidden')) {
+          dismissAlert();
+        }
+      }
+
+      // ইতিহাস থেকে শেষ ২০টি ডাটা
+      const hist = data.history || {};
+      const keys = Object.keys(hist).sort((a, b) => a.localeCompare(b));
+      const recent = keys.slice(-MAX);
+      labels = recent.map(k => new Date(hist[k].timestamp).toLocaleString(currentLang === 'bn' ? 'bn-BD' : 'en-US'));
+      tempData = recent.map(k => hist[k].temperature || 0);
+      humData = recent.map(k => hist[k].humidity || 0);
+      smokeData = recent.map(k => hist[k].smoke || 0);
+
+      // চার্ট আপডেট
+      tempChart.data.labels = labels;
+      tempChart.data.datasets[0].data = tempData;
+      tempChart.update();
+
+      humChart.data.labels = labels;
+      humChart.data.datasets[0].data = humData;
+      humChart.update();
+
+      smokeChart.data.labels = labels;
+      smokeChart.data.datasets[0].data = smokeData;
+      smokeChart.update();
+
+      // ইভেন্ট লগ (শেষ ৫টি)
+      const logDiv = document.getElementById('eventLog');
+      const latest = recent.slice(-5).reverse();
+      logDiv.innerHTML = latest.map(k => {
+        const d = hist[k];
+        return `<div class="border-b border-gray-100 dark:border-gray-800 py-1.5 flex justify-between text-xs">
+          <span>${new Date(d.timestamp).toLocaleString(currentLang === 'bn' ? 'bn-BD' : 'en-US')}</span>
+          <span>🌡️${d.temperature}°C 💧${d.humidity}% 🔥${d.smoke} ${d.flame ? '🔥' : ''} ${d.alarm ? '🚨' : ''}</span>
+        </div>`;
+      }).join('') || `<div class="text-gray-400 text-center py-2">${translations[currentLang].no_events}</div>`;
+    }
+
+    // =========================================================
+    // ৭. অ্যালার্ট সিস্টেম
+    // =========================================================
+    let alertActive = false;
+
+    function showAlert(msg) {
+      if (alertActive) return;
+      document.getElementById('alertMessage').textContent = msg;
+      document.getElementById('alertPopup').classList.remove('hidden');
+      alertActive = true;
+      try {
+        const audio = new Audio('https://www.soundjay.com/mechanical/siren-1.wav');
+        audio.play().catch(() => {});
+      } catch (e) {}
+    }
+
+    window.dismissAlert = function() {
+      document.getElementById('alertPopup').classList.add('hidden');
+      alertActive = false;
+    };
+
+    // =========================================================
+    // ৮. ফায়ারবেস লিসেনার
+    // =========================================================
+    let firebaseReady = false;
+
+    window.onload = function() {
+      // ল্যাঙ্গুয়েজ সেট করুন
+      setLanguage(currentLang);
+      // ল্যাঙ্গুয়েজ বাটন ইভেন্ট
+      document.getElementById('langBn').addEventListener('click', function() {
+        setLanguage('bn');
+      });
+      document.getElementById('langEn').addEventListener('click', function() {
+        setLanguage('en');
+      });
+
+      // চার্ট শুরু
+      initCharts();
+
+      // ফায়ারবেস থেকে প্রথমবার ডাটা নিন
+      db.ref('/').once('value').then(snap => {
+        firebaseReady = true;
+        updateUI(snap.val());
+      }).catch(err => console.error('Firebase initial read error:', err));
+
+      // রিয়েল-টাইম লিসেনার
+      db.ref('/').on('value', snap => {
+        firebaseReady = true;
+        updateUI(snap.val());
+      }, err => console.error('Firebase listener error:', err));
+    };
+  </script>
+</body>
+</html>

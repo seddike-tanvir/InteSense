@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="bn" id="htmlRoot">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intesense - সেটিংস</title>
+
+  <link rel="stylesheet" href="https://fonts.maateen.me/siyam-rupali/font.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-body: #f1f5f9; --bg-card: #ffffff; --bg-header: #ffffff;
+      --text-primary: #1e293b; --text-secondary: #475569;
+      --border-color: #e2e8f0; --shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
+      --nav-bg: #f8fafc;
+    }
+    .dark {
+      --bg-body: #0f172a; --bg-card: #1e293b; --bg-header: #1e293b;
+      --text-primary: #f1f5f9; --text-secondary: #94a3b8;
+      --border-color: #334155; --shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+      --nav-bg: #1e293b;
+    }
+    body { font-family: 'Siyam Rupali', 'Noto Serif Bengali', serif; background: var(--bg-body); color: var(--text-primary); min-height: 100vh; }
+    .card { background: var(--bg-card); border: 1px solid var(--border-color); box-shadow: var(--shadow); border-radius: 16px; }
+    .header-card { background: var(--bg-header); border-bottom: 1px solid var(--border-color); }
+    .nav-link { background: var(--nav-bg); color: var(--text-secondary); border: 1px solid var(--border-color); }
+    .nav-link.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+    .nav-link:hover:not(.active) { background: var(--border-color); }
+    .toggle-checkbox:checked + .toggle-label { background-color: #4f46e5; }
+    .toggle-checkbox:checked + .toggle-label .toggle-dot { transform: translateX(100%); background-color: white; }
+    .toggle-label { display: flex; align-items: center; justify-content: space-between; width: 52px; height: 28px; padding: 3px; border-radius: 9999px; background-color: #cbd5e1; cursor: pointer; transition: background-color 0.2s; position: relative; }
+    .toggle-dot { width: 22px; height: 22px; border-radius: 9999px; background-color: white; transition: transform 0.2s; position: absolute; left: 3px; top: 3px; }
+    .dark .toggle-label { background-color: #475569; }
+    * { transition: background-color 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.3s; }
+    input, select { background: var(--bg-body); color: var(--text-primary); border-color: var(--border-color); }
+  </style>
+</head>
+<body>
+
+<div class="header-card sticky top-0 z-40 backdrop-blur-sm bg-opacity-80">
+  <div class="container mx-auto px-4 py-4 max-w-3xl flex flex-wrap items-center justify-between gap-4">
+    <!-- লোগো -->
+    <span class="text-2xl md:text-3xl font-bold text-indigo-700 dark:text-indigo-400 tracking-tight">
+      Intesense
+    </span>
+    <div class="flex items-center gap-4">
+      <div class="flex gap-2 text-sm font-medium">
+        <a href="./" class="nav-link px-4 py-2 rounded-full transition">📊 ড্যাশবোর্ড</a>
+        <a href="./history/" class="nav-link px-4 py-2 rounded-full transition">📜 ইতিহাস</a>
+        <a href="./settings/" class="nav-link active px-4 py-2 rounded-full transition">⚙️ সেটিংস</a>
+      </div>
+      <!-- থিম টগল -->
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-gray-500 dark:text-gray-400">☀️</span>
+        <input type="checkbox" id="themeToggle" class="toggle-checkbox hidden" />
+        <label for="themeToggle" class="toggle-label relative"><span class="toggle-dot"></span></label>
+        <span class="text-sm text-gray-500 dark:text-gray-400">🌙</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+  <div class="container mx-auto px-4 py-6 max-w-3xl">
+    <div class="card p-6">
+      <h2 class="text-xl font-semibold mb-4">🔧 কনফিগারেশন</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">ESP32 এই মানগুলো পড়ে এবং স্বয়ংক্রিয়ভাবে আপডেট হয়।</p>
+      <div class="space-y-4">
+        <div><label class="block text-sm font-medium">⏱ আপলোড ইন্টারভাল (মিলিসেকেন্ড)</label><input id="uploadInterval" type="number" class="mt-1 w-full p-2 border rounded-lg" /><p class="text-xs text-gray-400">যেমন: ৫ সেকেন্ড = ৫০০০</p></div>
+        <div><label class="block text-sm font-medium">🌡️ তাপমাত্রা লিমিট (°C)</label><input id="temperatureLimit" type="number" step="0.1" class="mt-1 w-full p-2 border rounded-lg" /></div>
+        <div><label class="block text-sm font-medium">🔥 ধোঁয়া/গ্যাস লিমিট (ADC মান)</label><input id="smokeLimit" type="number" class="mt-1 w-full p-2 border rounded-lg" /></div>
+        <div><label class="block text-sm font-medium">💧 আর্দ্রতা লিমিট (%)</label><input id="humidityLimit" type="number" step="0.1" class="mt-1 w-full p-2 border rounded-lg" /></div>
+      </div>
+      <div class="flex gap-4 mt-6">
+        <button onclick="saveSettings()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">💾 সংরক্ষণ করুন</button>
+        <button onclick="loadSettings()" class="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-6 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">🔄 রিফ্রেশ</button>
+      </div>
+      <div id="statusMessage" class="mt-4 text-sm font-medium"></div>
+    </div>
+
+    <div class="mt-6 card p-4 border-l-4 border-blue-500">
+      <h3 class="font-semibold text-blue-700 dark:text-blue-400">📌 বর্তমান মান</h3>
+      <div id="currentVals" class="text-sm mt-2 space-y-1"></div>
+    </div>
+  </div>
+
+  <div class="text-center text-xs text-gray-400 dark:text-gray-600 py-6 border-t border-gray-200 dark:border-gray-800 mt-8">
+    &copy; ২০২৬ ইন্টেসেন্স - স্মার্ট আইওটি ফায়ার মনিটরিং সিস্টেম
+  </div>
+
+  <script>
+    const firebaseConfig = { apiKey: "AIzaSyA8WKGXIAioDQ14Q_z1XpaJvCUkTvBD6_I", authDomain: "intesense-ae5aa.firebaseapp.com", databaseURL: "https://intesense-ae5aa-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "intesense-ae5aa", storageBucket: "intesense-ae5aa.firebasestorage.app", messagingSenderId: "945696306096", appId: "1:945696306096:web:571d1726277182b0f35c75", measurementId: "G-H9VJCRJWD2" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // থিম
+    const htmlRoot = document.getElementById('htmlRoot');
+    const toggle = document.getElementById('themeToggle');
+    function setTheme(dark) { if(dark){ htmlRoot.classList.add('dark'); toggle.checked=true; localStorage.setItem('theme','dark'); } else { htmlRoot.classList.remove('dark'); toggle.checked=false; localStorage.setItem('theme','light'); } }
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') setTheme(true); else setTheme(false);
+    toggle.addEventListener('change', function() { setTheme(this.checked); });
+
+    function loadSettings() {
+      db.ref('/settings').once('value').then(snap => {
+        const data = snap.val();
+        if (!data) { document.getElementById('currentVals').innerHTML = '<div>কোনো সেটিংস নেই। ডিফল্ট মান ব্যবহার করুন।</div>'; return; }
+        document.getElementById('uploadInterval').value = data.uploadInterval || 5000;
+        document.getElementById('temperatureLimit').value = data.temperatureLimit || 40;
+        document.getElementById('smokeLimit').value = data.smokeLimit || 1000;
+        document.getElementById('humidityLimit').value = data.humidityLimit || 80;
+        document.getElementById('currentVals').innerHTML = `
+          <div>⏱ আপলোড: ${data.uploadInterval || 5000} ms</div>
+          <div>🌡️ তাপমাত্রা লিমিট: ${data.temperatureLimit || 40} °C</div>
+          <div>🔥 ধোঁয়া লিমিট: ${data.smokeLimit || 1000} ADC</div>
+          <div>💧 আর্দ্রতা লিমিট: ${data.humidityLimit || 80} %</div>
+        `;
+        document.getElementById('statusMessage').innerHTML = '';
+      }).catch(err => { document.getElementById('statusMessage').innerHTML = `<span class="text-red-600">❌ লোড করতে ব্যর্থ: ${err.message}</span>`; });
+    }
+
+    function saveSettings() {
+      const uploadInterval = parseInt(document.getElementById('uploadInterval').value);
+      const temperatureLimit = parseFloat(document.getElementById('temperatureLimit').value);
+      const smokeLimit = parseInt(document.getElementById('smokeLimit').value);
+      const humidityLimit = parseFloat(document.getElementById('humidityLimit').value);
+      if (isNaN(uploadInterval) || isNaN(temperatureLimit) || isNaN(smokeLimit) || isNaN(humidityLimit)) {
+        document.getElementById('statusMessage').innerHTML = '<span class="text-red-600">⚠️ সব ফিল্ড সঠিকভাবে পূরণ করুন।</span>'; return;
+      }
+      const updates = { uploadInterval, temperatureLimit, smokeLimit, humidityLimit };
+      db.ref('/settings').update(updates).then(() => {
+        document.getElementById('statusMessage').innerHTML = '<span class="text-green-600">✅ সেটিংস সফলভাবে সংরক্ষিত হয়েছে! ESP32 স্বয়ংক্রিয়ভাবে আপডেট হবে।</span>';
+        loadSettings();
+      }).catch(err => { document.getElementById('statusMessage').innerHTML = `<span class="text-red-600">❌ সংরক্ষণ ব্যর্থ: ${err.message}</span>`; });
+    }
+
+    window.onload = loadSettings;
+  </script>
+</body>
+</html>
