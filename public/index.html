@@ -5,10 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Intesense - Dashboard</title>
 
-  <!-- ফন্ট -->
+  <!-- ===== ফন্ট ===== -->
+  <!-- Poppins – ইংরেজির জন্য -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Siyam Rupali – বাংলার জন্য -->
   <link rel="stylesheet" href="https://fonts.maateen.me/siyam-rupali/font.css" />
 
   <!-- Tailwind CSS -->
@@ -47,11 +49,12 @@
       --nav-bg: #1e293b;
     }
 
-    /* ===== গ্লোবাল ===== */
+    /* ===== গ্লোবাল স্টাইল ===== */
     * {
       transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
     }
 
+    /* ডিফল্ট: সিয়াম রুপালি (বাংলা) */
     body {
       font-family: 'Siyam Rupali', 'Noto Serif Bengali', serif;
       background: var(--bg-body);
@@ -59,6 +62,7 @@
       min-height: 100vh;
     }
 
+    /* ইংরেজি মোডে পপিন্স */
     .lang-en body {
       font-family: 'Poppins', sans-serif;
     }
@@ -332,7 +336,7 @@
       </div>
     </div>
 
-    <!-- ===== ফুটার (আপডেট) ===== -->
+    <!-- ===== ফুটার ===== -->
     <div class="text-center text-xs text-gray-400 dark:text-gray-600 py-6 border-t border-gray-200 dark:border-gray-800 mt-8 space-y-1">
       <div data-i18n="footer"></div>
       <div data-i18n="license"></div>
@@ -360,7 +364,7 @@
   <!-- মূল জেএস – ল্যাঙ্গুয়েজ, থিম, চার্ট, ডাটা লোড -->
   <script>
     // =========================================================
-    // ১. ল্যাঙ্গুয়েজ ডেটা (আপডেটেড ফুটার ও লাইসেন্স)
+    // ১. ল্যাঙ্গুয়েজ ডেটা
     // =========================================================
     const translations = {
       bn: {
@@ -426,17 +430,21 @@
     let currentLang = localStorage.getItem('lang') || 'bn';
 
     // =========================================================
-    // ২. ল্যাঙ্গুয়েজ টগল ফাংশন (innerHTML দিয়ে আপডেট)
+    // ২. ল্যাঙ্গুয়েজ টগল ফাংশন
     // =========================================================
     function setLanguage(lang) {
       currentLang = lang;
       localStorage.setItem('lang', lang);
       document.documentElement.lang = lang === 'bn' ? 'bn' : 'en';
+
+      // body তে lang-en ক্লাস যোগ/সরান – এটাই ফন্ট পরিবর্তন করবে
       document.body.classList.toggle('lang-en', lang === 'en');
+
+      // বাটন সক্রিয়
       document.getElementById('langBn').classList.toggle('active-lang', lang === 'bn');
       document.getElementById('langEn').classList.toggle('active-lang', lang === 'en');
 
-      // সব i18n এলিমেন্ট আপডেট (innerHTML ব্যবহার)
+      // সব i18n এলিমেন্ট আপডেট
       document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[lang] && translations[lang][key]) {
@@ -484,9 +492,7 @@
     // ৪. স্ট্যাটাস ব্যাজ আপডেট (অনলাইন/অফলাইন)
     // =========================================================
     function updateStatusBadgeText() {
-      const badge = document.getElementById('statusBadge');
-      const online = (typeof firebaseReady !== 'undefined' && firebaseReady) ? true : false;
-      // আমরা ডাটা আপডেটের সময় এটি সেট করব, তাই এখানে কিছু করছি না
+      // ডাটা আপডেটের সময় এটি সেট করব, তাই এখানে কিছু করছি না
     }
 
     // =========================================================
@@ -588,7 +594,6 @@
       if (cur.alarm) {
         showAlert(translations[lang].alarm_msg);
       } else {
-        // অ্যালার্ট শেষ হলে পপআপ বন্ধ করুন (যদি খোলা থাকে)
         if (!document.getElementById('alertPopup').classList.contains('hidden')) {
           dismissAlert();
         }
