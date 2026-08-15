@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intesense - লগইন</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://fonts.maateen.me/siyam-rupali/font.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+  <style>
+    body {
+      font-family: 'Siyam Rupali', 'Noto Serif Bengali', serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 20px;
+    }
+    .lang-en body {
+      font-family: 'Poppins', sans-serif;
+    }
+    .login-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 48px 40px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    .login-card h1 {
+      color: #818cf8;
+      font-size: 2rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .login-card .subtitle {
+      color: #94a3b8;
+      text-align: center;
+      margin-bottom: 32px;
+      font-size: 0.95rem;
+    }
+    .login-card input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      color: #f1f5f9;
+      font-size: 1rem;
+      transition: all 0.3s;
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+    .login-card input:focus {
+      outline: none;
+      border-color: #818cf8;
+      background: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+    }
+    .login-card input::placeholder {
+      color: #64748b;
+    }
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: inherit;
+    }
+    .login-btn:hover {
+      background: #6366f1;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px -5px rgba(79, 70, 229, 0.4);
+    }
+    .login-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .login-card .link {
+      color: #818cf8;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .login-card .link:hover {
+      color: #a5b4fc;
+      text-decoration: underline;
+    }
+    .error-msg {
+      color: #f87171;
+      font-size: 0.85rem;
+      text-align: center;
+      margin-top: 12px;
+      min-height: 24px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .lang-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 6px 12px;
+      border-radius: 9999px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .lang-toggle button {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .lang-toggle button.active {
+      background: #4f46e5;
+      color: white;
+    }
+    .lang-toggle button:hover:not(.active) {
+      color: #f1f5f9;
+    }
+    .footer-text {
+      text-align: center;
+      color: #64748b;
+      font-size: 0.8rem;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="lang-toggle">
+    <button id="langBn" class="active">বাং</button>
+    <button id="langEn">EN</button>
+  </div>
+
+  <div class="login-card">
+    <h1>🔥 Intesense</h1>
+    <p class="subtitle" data-i18n="login_sub">আপনার অ্যাকাউন্টে লগইন করুন</p>
+
+    <form id="loginForm" autocomplete="off">
+      <input type="email" id="email" placeholder="ইমেইল" required />
+      <input type="password" id="password" placeholder="পাসওয়ার্ড" required />
+      <button type="submit" class="login-btn" id="loginBtn">
+        <span data-i18n="login_btn">লগইন করুন</span>
+      </button>
+    </form>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="text-center mt-4" style="color: #94a3b8; font-size: 0.9rem;">
+      <span data-i18n="no_account">অ্যাকাউন্ট নেই?</span>
+      <a href="/register/" class="link" data-i18n="register_link">রেজিস্টার করুন</a>
+    </div>
+
+    <div class="footer-text">© 2026 Intesense · GPL v3</div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA8WKGXIAioDQ14Q_z1XpaJvCUkTvBD6_I",
+      authDomain: "intesense-ae5aa.firebaseapp.com",
+      databaseURL: "https://intesense-ae5aa-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "intesense-ae5aa",
+      storageBucket: "intesense-ae5aa.firebasestorage.app",
+      messagingSenderId: "945696306096",
+      appId: "1:945696306096:web:571d1726277182b0f35c75",
+      measurementId: "G-H9VJCRJWD2"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    const translations = {
+      bn: { login_sub: 'আপনার অ্যাকাউন্টে লগইন করুন', login_btn: 'লগইন করুন', no_account: 'অ্যাকাউন্ট নেই?', register_link: 'রেজিস্টার করুন' },
+      en: { login_sub: 'Sign in to your account', login_btn: 'Sign In', no_account: "Don't have an account?", register_link: 'Register' }
+    };
+    let currentLang = localStorage.getItem('lang') || 'bn';
+
+    function setLang(lang) {
+      currentLang = lang;
+      localStorage.setItem('lang', lang);
+      document.documentElement.lang = lang === 'bn' ? 'bn' : 'en';
+      document.body.classList.toggle('lang-en', lang === 'en');
+      document.getElementById('langBn').classList.toggle('active', lang === 'bn');
+      document.getElementById('langEn').classList.toggle('active', lang === 'en');
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key]) el.textContent = translations[lang][key];
+      });
+    }
+    setLang(currentLang);
+    document.getElementById('langBn').addEventListener('click', () => setLang('bn'));
+    document.getElementById('langEn').addEventListener('click', () => setLang('en'));
+
+    const form = document.getElementById('loginForm');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const loginBtn = document.getElementById('loginBtn');
+    const errorMsg = document.getElementById('errorMsg');
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        window.location.href = '/';
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!email || !password) {
+        errorMsg.textContent = currentLang === 'bn' ? 'ইমেইল ও পাসওয়ার্ড দিন' : 'Enter email and password';
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = `<span class="spinner"></span> ${currentLang === 'bn' ? 'লগইন হচ্ছে...' : 'Signing in...'}`;
+      errorMsg.textContent = '';
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+      } catch (err) {
+        let msg = err.message;
+        if (err.code === 'auth/user-not-found') {
+          msg = currentLang === 'bn' ? 'ইউজার পাওয়া যায়নি' : 'User not found';
+        } else if (err.code === 'auth/wrong-password') {
+          msg = currentLang === 'bn' ? 'ভুল পাসওয়ার্ড' : 'Wrong password';
+        } else if (err.code === 'auth/invalid-email') {
+          msg = currentLang === 'bn' ? 'ভুল ইমেইল ফরম্যাট' : 'Invalid email format';
+        }
+        errorMsg.textContent = msg;
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = currentLang === 'bn' ? 'লগইন করুন' : 'Sign In';
+      }
+    });
+  </script>
+</body>
+</html>
