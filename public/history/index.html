@@ -46,7 +46,7 @@
 </head>
 <body>
 
-  <!-- ===== হেডার ===== -->
+  <!-- ===== হেডার (শুধু ড্যাশবোর্ডের মতোই) ===== -->
   <div class="header-card sticky top-0 z-40">
     <div class="container mx-auto px-4 py-3 max-w-7xl flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
@@ -56,9 +56,17 @@
       <div class="flex items-center gap-3 flex-wrap">
         <div class="flex gap-1 text-sm font-medium">
           <a href="/" class="nav-link px-3 py-1.5 rounded-full transition">📊 <span data-i18n="nav_dashboard">ড্যাশবোর্ড</span></a>
-          <a href="../history/" class="nav-link active px-3 py-1.5 rounded-full transition">📜 <span data-i18n="nav_history">ইতিহাস</span></a>
+          <a href="" class="nav-link active px-3 py-1.5 rounded-full transition">📜 <span data-i18n="nav_history">ইতিহাস</span></a>
           <a href="../settings/" class="nav-link px-3 py-1.5 rounded-full transition">⚙️ <span data-i18n="nav_settings">সেটিংস</span></a>
         </div>
+
+        <!-- ইউজার ইনফো -->
+        <div class="user-info">
+          👤 <span id="userDisplayName" class="email">ইউজার</span>
+          <span class="text-xs text-gray-400">|</span>
+          <span id="userEmail" class="text-xs"></span>
+        </div>
+
         <div class="flex items-center gap-1 border-l border-gray-300 dark:border-gray-700 pl-3">
           <button id="langBn" class="lang-btn active-lang" data-lang="bn">বাং</button>
           <button id="langEn" class="lang-btn" data-lang="en">EN</button>
@@ -152,6 +160,9 @@
 
     function logout() {
       auth.signOut().then(() => {
+        window.location.href = '/login/';
+      }).catch((error) => {
+        console.error('Logout failed:', error);
         window.location.href = '/login/';
       });
     }
