@@ -100,7 +100,7 @@
         </div>
 
         <!-- লগআউট -->
-        <button onclick="logout()" class="logout-btn">🚪 <span data-i18n="logout">প্রস্থান</span></button>
+        <button onclick="logout()" class="logout-btn"><span data-i18n="logout">প্রস্থান</span></button>
       </div>
     </div>
   </div>
@@ -119,32 +119,32 @@
     <div id="dashboardContent" class="hidden">
       <!-- কার্ড গ্রিড -->
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-        <div class="card p-4 text-center border-l-4 border-red-500">
+        <div class="card p-4 text-center border-l-4 border-red-500 flex flex-col justify-center">
           <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_temp">তাপমাত্রা</div>
-          <div id="tempVal" class="text-2xl font-bold value">--</div>
+          <div id="tempVal" class="text-2xl font-bold value h-[4rem] flex items-center justify-center">--</div>
           <div class="text-xs text-gray-400">°C</div>
         </div>
-        <div class="card p-4 text-center border-l-4 border-blue-500">
+        <div class="card p-4 text-center border-l-4 border-blue-500 flex flex-col justify-center">
           <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_humidity">আর্দ্রতা</div>
-          <div id="humVal" class="text-2xl font-bold value">--</div>
+          <div id="humVal" class="text-2xl font-bold value h-[4rem] flex items-center justify-center">--</div>
           <div class="text-xs text-gray-400">%</div>
         </div>
-        <div class="card p-4 text-center border-l-4 border-orange-500">
-          <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_smoke">ধোঁয়া/গ্যাস</div>
-          <div id="smokeVal" class="text-2xl font-bold value">--</div>
+        <div class="card p-4 text-center border-l-4 border-orange-500 flex flex-col justify-center">
+          <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_smoke">ধোঁয়া/গ্যাস</div>
+          <div id="smokeVal" class="text-2xl font-bold value h-[4rem] flex items-center justify-center">--</div>
           <div class="text-xs text-gray-400">ADC</div>
         </div>
-        <div class="card p-4 text-center border-l-4 border-yellow-500">
+        <div class="card p-4 text-center border-l-4 border-yellow-500 flex flex-col justify-center">
           <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_flame">শিখা</div>
-          <div id="flameVal" class="text-lg font-bold">✅ <span data-i18n="safe">নিরাপদ</span></div>
+          <div id="flameVal" class="text-lg font-bold h-[4rem] flex items-center justify-center">✅ <span data-i18n="safe">নিরাপদ</span></div>
         </div>
-        <div class="card p-4 text-center border-l-4 border-purple-500">
+        <div class="card p-4 text-center border-l-4 border-purple-500 flex flex-col justify-center">
           <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_motion">গতি</div>
-          <div id="motionVal" class="text-lg font-bold">⏸️ <span data-i18n="static">স্থির</span></div>
+          <div id="motionVal" class="text-lg font-bold h-[4rem] flex items-center justify-center">⏸️ <span data-i18n="static">স্থির</span></div>
         </div>
-        <div class="card p-4 text-center border-l-4 border-red-600">
+        <div class="card p-4 text-center border-l-4 border-red-600 flex flex-col justify-center">
           <div class="text-sm text-gray-500 dark:text-gray-400" data-i18n="card_alarm">অ্যালার্ম</div>
-          <div id="alarmVal" class="text-lg font-bold">✅ <span data-i18n="normal">স্বাভাবিক</span></div>
+          <div id="alarmVal" class="text-lg font-bold h-[4rem] flex items-center justify-center">✅ <span data-i18n="normal">স্বাভাবিক</span></div>
         </div>
       </div>
 
@@ -311,7 +311,7 @@
         event_log: '📋 Event Log',
         stats_info: 'Last update:',
         stats_sub: 'Real-time data from Firebase',
-        footer: '© 2026 InteSense · All rights reserved by <a href="https://tanvirseddike.web.app/" target="_blank" rel="noopener noreferrer" class="footer-link">Tanvir Seddike</a>',
+        footer: '© 2026 InteSense · All rights reserved by <a href="https://tanvirseddike.web.app/" target="_blank" rel="noopener noreferrer" class="footer-link ">Tanvir Seddike</a>',
         license: 'Licensed under GPL v3',
         alarm_msg: '🚨 Alarm! Fire/danger detected!',
         flame_detected: 'Flame detected!',
@@ -351,6 +351,8 @@
     let labels = [], tempData = [], humData = [], smokeData = [];
 
     function initCharts() {
+      if (tempChart && humChart && smokeChart) return;
+
       const commonOpts = {
         responsive: true,
         maintainAspectRatio: false,
@@ -406,9 +408,30 @@
       });
     }
 
+    function normalizeDashboardData(data) {
+      const source = data && typeof data === 'object' ? data : {};
+      const current = (source.current && typeof source.current === 'object') ? source.current : source;
+      const history = (source.history && typeof source.history === 'object') ? source.history : {};
+      return { current, history };
+    }
+
+    function getHistoryEntries(historyObj) {
+      if (!historyObj || typeof historyObj !== 'object') return [];
+
+      return Object.entries(historyObj)
+        .map(([id, entry]) => ({ id, ...(entry || {}) }))
+        .filter(entry => entry && typeof entry === 'object')
+        .map(entry => ({
+          ...entry,
+          _ts: Number(entry.timestamp) || 0
+        }))
+        .sort((a, b) => a._ts - b._ts)
+        .slice(-MAX);
+    }
+
     function updateUI(data) {
-      if (!data) return;
-      const cur = data.current || {};
+      const normalized = normalizeDashboardData(data);
+      const cur = normalized.current || {};
       document.getElementById('tempVal').textContent = cur.temperature?.toFixed(1) ?? '--';
       document.getElementById('humVal').textContent = cur.humidity?.toFixed(1) ?? '--';
       document.getElementById('smokeVal').textContent = cur.smoke ?? '--';
@@ -439,24 +462,20 @@
         }
       }
 
-      const hist = data.history || {};
-      const keys = Object.keys(hist).sort((a, b) => a.localeCompare(b));
-
-      if (keys.length === 0) {
+      const historyEntries = getHistoryEntries(normalized.history);
+      if (historyEntries.length === 0) {
         labels = [];
         tempData = [];
         humData = [];
         smokeData = [];
       } else {
-        const recent = keys.slice(-MAX);
-        labels = recent.map(k => {
-          const entry = hist[k];
+        labels = historyEntries.map(entry => {
           const ts = Number(entry.timestamp);
           return isNaN(ts) ? 'Invalid Date' : new Date(ts).toLocaleString(currentLang === 'bn' ? 'bn-BD' : 'en-US');
         });
-        tempData = recent.map(k => hist[k].temperature || 0);
-        humData = recent.map(k => hist[k].humidity || 0);
-        smokeData = recent.map(k => hist[k].smoke || 0);
+        tempData = historyEntries.map(entry => Number(entry.temperature) || 0);
+        humData = historyEntries.map(entry => Number(entry.humidity) || 0);
+        smokeData = historyEntries.map(entry => Number(entry.smoke) || 0);
       }
 
       if (tempChart) {
@@ -476,18 +495,16 @@
       }
 
       const logDiv = document.getElementById('eventLog');
-      const latestKeys = keys.slice(-5).reverse();
-      if (latestKeys.length === 0) {
-        logDiv.innerHTML =
-          `<div class="text-gray-400 text-center py-2">${translations[currentLang].no_events}</div>`;
+      const latestEntries = historyEntries.slice(-5).reverse();
+      if (latestEntries.length === 0) {
+        logDiv.innerHTML = `<div class="text-gray-400 text-center py-2">${translations[currentLang].no_events}</div>`;
       } else {
-        logDiv.innerHTML = latestKeys.map(k => {
-          const d = hist[k];
-          const ts = Number(d.timestamp);
+        logDiv.innerHTML = latestEntries.map(entry => {
+          const ts = Number(entry.timestamp);
           const timeStr = isNaN(ts) ? 'Invalid Date' : new Date(ts).toLocaleString(currentLang === 'bn' ? 'bn-BD' : 'en-US');
           return `<div class="border-b border-gray-100 dark:border-gray-800 py-1.5 flex justify-between text-xs">
             <span>${timeStr}</span>
-            <span>🌡️${d.temperature}°C 💧${d.humidity}% 🔥${d.smoke} ${d.flame ? '🔥' : ''} ${d.alarm ? '🚨' : ''}</span>
+            <span>🌡️${entry.temperature}°C 💧${entry.humidity}% 🔥${entry.smoke} ${entry.flame ? '🔥' : ''} ${entry.alarm ? '🚨' : ''}</span>
           </div>`;
         }).join('');
       }
@@ -512,14 +529,22 @@
     };
 
     function loadDashboardData() {
-      initCharts();
-      db.ref('/').once('value').then(snap => {
-        updateUI(snap.val());
-      }).catch(err => console.error('Firebase initial read error:', err));
+      if (!tempChart && !humChart && !smokeChart) {
+        initCharts();
+      }
 
-      db.ref('/').on('value', snap => {
-        updateUI(snap.val());
-      }, err => console.error('Firebase listener error:', err));
+      const rootRef = db.ref('/');
+      rootRef.on('value', snapshot => {
+        const rootValue = snapshot.val() || {};
+        const normalized = normalizeDashboardData(rootValue);
+
+        if (!normalized.current && Object.keys(normalized.history || {}).length === 0) {
+          updateUI({ current: {}, history: {} });
+          return;
+        }
+
+        updateUI(rootValue);
+      }, err => console.error('Firebase root listener error:', err));
     }
   </script>
 </body>
