@@ -119,6 +119,13 @@
 
     <!-- Dashboard Content -->
     <div id="dashboardContent" class="hidden">
+      <!-- Hero controls: sensor status (reflects DB /current.online) -->
+      <div id="heroControls" class="flex items-center justify-between mb-4">
+        <div class="text-lg font-semibold text-gray-700 dark:text-gray-300">Dashboard</div>
+        <div class="flex items-center gap-2">
+          <button id="heroSensorBtn" class="lang-btn" aria-live="polite">--</button>
+        </div>
+      </div>
       <!-- কার্ড গ্রিড -->
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         <div class="card p-4 text-center border-l-4 border-red-500 flex flex-col justify-center">
@@ -299,6 +306,8 @@
         alarm_active: 'অ্যালার্ম!',
         online: 'অনলাইন',
         offline: 'অফলাইন',
+        show_active: 'অ্যাকটিভ দেখুন',
+        show_inactive: 'ইনঅ্যাকটিভ দেখুন',
         no_events: 'কোনো ইভেন্ট নেই'
       },
       en: {
@@ -321,6 +330,8 @@
         alarm_active: 'ALARM!',
         online: 'Online',
         offline: 'Offline',
+        show_active: 'Show Active',
+        show_inactive: 'Show Inactive',
         no_events: 'No events'
       }
     };
@@ -459,6 +470,13 @@
         statusBtn.className = `lang-btn ${online ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
       }
 
+      // Update hero sensor status button (reflect DB online state)
+      const heroBtn = document.getElementById('heroSensorBtn');
+      if (heroBtn) {
+        heroBtn.textContent = online ? '🟢 ' + statusText : '🔴 ' + statusText;
+        heroBtn.className = `lang-btn ${online ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
+      }
+
       if (cur.alarm) {
         showAlert(translations[lang].alarm_msg);
       } else {
@@ -551,6 +569,8 @@
         updateUI(rootValue);
       }, err => console.error('Firebase root listener error:', err));
     }
+
+    // Hero sensor status button will be updated from `updateUI()`
   </script>
 </body>
 </html>
