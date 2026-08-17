@@ -477,8 +477,17 @@
         heroBtn.className = `lang-btn ${online ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
       }
 
-      if (cur.alarm) {
-        showAlert(translations[lang].alarm_msg);
+      // Alert priority: flame > gas (smoke) > motion > general alarm
+      const smokeVal = Number(cur.smoke) || 0;
+      if (cur.flame) {
+        showAlert(translations[lang].flame_detected, 'fire');
+      } else if (smokeVal > (smokeLimit || 300)) {
+        showAlert(translations[lang].alarm_msg, 'gas');
+      } else if (cur.motion) {
+        showAlert(translations[lang].motion_detected, 'motion');
+      } else if (cur.alarm) {
+        // fallback: treat as fire-like alarm
+        showAlert(translations[lang].alarm_msg, 'fire');
       } else {
         if (!document.getElementById('alertPopup').classList.contains('hidden')) {
           dismissAlert();
@@ -534,21 +543,44 @@
     }
 
     let alertActive = false;
+    let alertType = null;
+    let alertAudio = null;
+    let smokeLimit = 300; // default fallback
 
-    function showAlert(msg) {
-      if (alertActive) return;
-      document.getElementById('alertMessage').textContent = msg;
+    // keep smokeLimit in sync with settings DB (if present)
+    try {
+      db.ref('/settings/smokeLimit').on('value', snap => {
+        const v = snap.val();
+        if (v != null) smokeLimit = Number(v) || smokeLimit;
+      });
+    } catch (e) {}
+
+    // Show alert popup; `type` controls whether to play sound ('fire'|'gas' => sound)
+    function showAlert(msg, type) {
+      if (alertActive && alertType === type) return;
+      alertType = type || null;
+      document.getElementById('alertMessage').textContent = msg || '';
       document.getElementById('alertPopup').classList.remove('hidden');
       alertActive = true;
-      try {
-        const audio = new Audio('https://www.soundjay.com/mechanical/siren-1.wav');
-        audio.play().catch(() => {});
-      } catch (e) {}
+
+      // stop any previous audio
+      try { if (alertAudio) { alertAudio.pause(); alertAudio.currentTime = 0; alertAudio = null; } } catch (e) {}
+
+      // play sound only for fire or gas
+      if (type === 'fire' || type === 'gas') {
+        try {
+          alertAudio = new Audio('https://www.soundjay.com/mechanical/siren-1.wav');
+          alertAudio.loop = true;
+          alertAudio.play().catch(() => {});
+        } catch (e) {}
+      }
     }
 
     window.dismissAlert = function() {
       document.getElementById('alertPopup').classList.add('hidden');
       alertActive = false;
+      alertType = null;
+      try { if (alertAudio) { alertAudio.pause(); alertAudio.currentTime = 0; alertAudio = null; } } catch (e) {}
     };
 
     function loadDashboardData() {
@@ -556,6 +588,15 @@
         initCharts();
       }
 
+      // First fetch current once so UI shows sensor status immediately on load
+      try {
+        db.ref('/current').once('value').then(snap => {
+          const cur = snap.val() || {};
+          updateUI({ current: cur, history: {} });
+        }).catch(err => console.error('Firebase /current once error:', err));
+      } catch (e) { console.error('Firebase /current once exception:', e); }
+
+      // Then attach root listener for realtime updates
       const rootRef = db.ref('/');
       rootRef.on('value', snapshot => {
         const rootValue = snapshot.val() || {};
