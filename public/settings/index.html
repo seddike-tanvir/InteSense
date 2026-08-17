@@ -46,7 +46,6 @@
   <div class="container mx-auto px-4 py-3 max-w-3xl flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-3">
       <span class="text-2xl md:text-3xl font-bold text-indigo-700 dark:text-indigo-400 tracking-tight">Intesense</span>
-      <span id="statusBadge" class="text-xs bg-green-500 text-white px-3 py-1 rounded-full">🟢 Online</span>
     </div>
     <div class="flex items-center gap-3 flex-wrap">
       <div class="flex gap-1 text-sm font-medium">
@@ -72,6 +71,7 @@
         <label for="themeToggle" class="toggle-label relative"><span class="toggle-dot"></span></label>
         <span class="text-sm text-gray-500 dark:text-gray-400">🌙</span>
       </div>
+      <button id="sensorStatusBtn" class="lang-btn" aria-live="polite">--</button>
       <button onclick="logout()" class="logout-btn"><span data-i18n="logout">প্রস্থান</span></button>
     </div>
   </div>
@@ -172,6 +172,19 @@
     }
 
     window.onload = loadSettings;
+
+    // Update sensor status button from realtime DB (/current)
+    (function() {
+      const statusBtn = document.getElementById('sensorStatusBtn');
+      if (!statusBtn) return;
+      db.ref('/current').on('value', snap => {
+        const cur = snap.val() || {};
+        const online = cur.online === true;
+        const statusText = online ? (currentLang === 'bn' ? 'অনলাইন' : 'Online') : (currentLang === 'bn' ? 'অফলাইন' : 'Offline');
+        statusBtn.textContent = online ? '🟢 ' + statusText : '🔴 ' + statusText;
+        statusBtn.className = `lang-btn ${online ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
+      }, err => console.error('sensor status listener error:', err));
+    })();
   </script>
 </body>
 </html>

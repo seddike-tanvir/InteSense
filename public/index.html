@@ -68,7 +68,6 @@
     <div class="container mx-auto px-4 py-3 max-w-7xl flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <span class="text-2xl md:text-3xl font-bold text-indigo-700 dark:text-indigo-400 tracking-tight">Intesense</span>
-        <span id="statusBadge" class="text-xs bg-green-500 text-white px-3 py-1 rounded-full">🟢 Online</span>
       </div>
       <div class="flex items-center gap-3 flex-wrap">
         <!-- নেভ -->
@@ -98,6 +97,9 @@
           <label for="themeToggle" class="toggle-label relative"><span class="toggle-dot"></span></label>
           <span class="text-sm text-gray-500 dark:text-gray-400">🌙</span>
         </div>
+
+        <!-- সেন্সর স্ট্যাটাস -->
+        <button id="sensorStatusBtn" class="lang-btn" aria-live="polite">--</button>
 
         <!-- লগআউট -->
         <button onclick="logout()" class="logout-btn"><span data-i18n="logout">প্রস্থান</span></button>
@@ -448,11 +450,14 @@
 
       document.getElementById('lastUpdate').textContent = new Date().toLocaleString(currentLang === 'bn' ? 'bn-BD' : 'en-US');
 
-      const badge = document.getElementById('statusBadge');
+      // Update sensor status button (set from database `online` field)
+      const statusBtn = document.getElementById('sensorStatusBtn');
       const online = cur.online === true;
       const statusText = online ? translations[lang].online : translations[lang].offline;
-      badge.textContent = online ? '🟢 ' + statusText : '🔴 ' + statusText;
-      badge.className = `text-xs px-3 py-1 rounded-full ${online ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
+      if (statusBtn) {
+        statusBtn.textContent = online ? '🟢 ' + statusText : '🔴 ' + statusText;
+        statusBtn.className = `lang-btn ${online ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
+      }
 
       if (cur.alarm) {
         showAlert(translations[lang].alarm_msg);
