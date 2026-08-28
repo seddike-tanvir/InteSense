@@ -1,8 +1,11 @@
 #include <WiFi.h>
 #include <DHT.h>
+#include <time.h>
+#include <FirebaseESP32.h>       // Correct header for "Firebase ESP32 Client" library
+#include <addons/RTDBHelper.h>   // Helper for FirebaseJson
 
 // ============================================================
-// 🔑 Firebase Credentials (আপনার দেওয়া)
+// 🔑 Firebase Credentials
 // ============================================================
 #define API_KEY        "AIzaSyA8WKGXIAioDQ14Q_z1XpaJvCUkTvBD6_I"
 #define DATABASE_URL   "https://intesense-ae5aa-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -10,10 +13,19 @@
 #define USER_PASSWORD  "admin123"
 
 // ============================================================
-// 🌐 Wi-Fi Credentials
+// 🌐 Multiple Wi-Fi Credentials
 // ============================================================
-const char* ssid = "Star Link";
-const char* password = "12345678000";
+struct WiFiNetwork {
+  const char* ssid;
+  const char* password;
+};
+
+WiFiNetwork networks[] = {
+  {"Star Link", "12345678000"},
+  {"netis", "123456789"},
+  {"Seddike's Galaxy M12", "jaMonChayDe"}
+};
+const int numNetworks = sizeof(networks) / sizeof(networks[0]);
 
 // ============================================================
 // 📟 Sensors & Actuators Pin Configuration
@@ -36,24 +48,32 @@ DHT dht(DHTPIN, DHTTYPE);
 // ============================================================
 float TEMP_THRESHOLD = 40.0;
 int SMOKE_THRESHOLD = 1000;
-int UPLOAD_INTERVAL = 5000;  // 5 seconds
+int UPLOAD_INTERVAL = 5000; // 5 seconds
 
 unsigned long lastUploadTime = 0;
 unsigned long lastSettingsCheck = 0;
+unsigned long lastReconnectAttempt = 0;
+const unsigned long RECONNECT_COOLDOWN = 15000; // 15 seconds cooldown for Wi-Fi retry
 
 // ============================================================
 // 🔥 Firebase Objects
 // ============================================================
-#include <FirebaseESP32.h>
-#include <addons/RTDBHelper.h>
-
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
+bool firebaseReady = false;
+
+unsigned long long getEpochMillis() {
+  time_t now;
+  time(&now);
+  return static_cast<unsigned long long>(now) * 1000ULL;
+}
+
 // Function Declarations
 void fetchSettings();
 void sendToFirebase(float temp, float hum, int smoke, bool flame, bool motion, bool alarm);
+bool connectToWiFi();
 
 // ============================================================
 // 🛠 SETUP
@@ -63,7 +83,7 @@ void setup() {
   delay(1000);
 
   Serial.println("\n\n=====================================");
-  Serial.println("   INTESENSE - FIREBASE ESP32 Client");
+  Serial.println("   INTESENSE - Firebase ESP32 Client");
   Serial.println("=====================================");
 
   // Pin Initialization
@@ -81,54 +101,52 @@ void setup() {
   digitalWrite(BLUE_LED, LOW);
   analogReadResolution(12);
 
-  // ---------- Connect Wi-Fi ----------
-  setCpuFrequencyMhz(80);
-  WiFi.mode(WIFI_STA);
-  WiFi.setTxPower(WIFI_POWER_13dBm);
-  Serial.print("📶 Connecting to Wi-Fi...");
-  WiFi.begin(ssid, password);
+  // Connect to Wi-Fi
+  setCpuFrequencyMhz(80); // Helps prevent brownout by slightly reducing CPU power draw
+  bool wifiConnected = connectToWiFi();
   
-  int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 40) {
-    delay(500);
-    Serial.print(".");
-    attempts++;
-  }
-  Serial.println();
-
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("✅ Wi-Fi Connected!");
-    Serial.print("📌 IP Address: ");
-    Serial.println(WiFi.localIP());
+  if (wifiConnected) {
     digitalWrite(BLUE_LED, HIGH);
+    configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+    Serial.println("⏳ Synchronizing clock...");
+    time_t now = 0;
+    int timeAttempts = 0;
+    while (now < 1700000000 && timeAttempts < 20) {
+      delay(500);
+      time(&now);
+      timeAttempts++;
+    }
+    if (now >= 1700000000) Serial.println("✅ Clock synchronized.");
+    else Serial.println("⚠️ Clock synchronization failed; timestamps may be invalid.");
   } else {
-    Serial.println("❌ Wi-Fi Connection Failed!");
+    Serial.println("⚠️ Proceeding without Wi-Fi. Will retry in background.");
   }
 
-  // ---------- Firebase Setup ----------
+  // Initialize Firebase
   Serial.println("🔑 Initializing Firebase...");
-  
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
-
-  // User Email and Password Authentication
   auth.user.email = USER_EMAIL;
   auth.user.password = USER_PASSWORD;
 
-  // Reconnect Wi-Fi automatically if connection drops
   Firebase.reconnectWiFi(true);
-  
   Firebase.begin(&config, &auth);
 
-  Serial.println(" Waiting for Firebase Authentication...");
-  while (auth.token.uid == "") {
+  Serial.println("⏳ Waiting for Firebase Authentication...");
+  int authAttempts = 0;
+  while (!Firebase.ready() && authAttempts < 40) {
     Serial.print(".");
     delay(500);
+    authAttempts++;
   }
   
-  Serial.println("\n✅ Firebase Authenticated Successfully!");
+  if (Firebase.ready()) {
+    Serial.println("\n✅ Firebase Authenticated Successfully!");
+    firebaseReady = true;
+  } else {
+    Serial.println("\n❌ Firebase Authentication Failed or Timed Out!");
+  }
 
-  // Fetch initial configuration thresholds
   fetchSettings();
 
   Serial.println("🟢 System ready!");
@@ -136,17 +154,59 @@ void setup() {
 }
 
 // ============================================================
+// 📶 Wi-Fi Connection Helper Function (Auto-tries ALL networks)
+// ============================================================
+bool connectToWiFi() {
+  Serial.println("🔄 Initiating Wi-Fi Connection...");
+  
+  WiFi.disconnect(true); // Clear previous connections
+  delay(100);
+  
+  WiFi.mode(WIFI_STA);
+  WiFi.setTxPower(WIFI_POWER_13dBm); // Balanced power to prevent brownout
+  
+  for (int i = 0; i < numNetworks; i++) {
+    Serial.print("📶 Trying: ");
+    Serial.println(networks[i].ssid);
+    
+    WiFi.begin(networks[i].ssid, networks[i].password);
+    
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) { // 10 seconds max per network
+      delay(500);
+      Serial.print(".");
+      attempts++;
+    }
+    Serial.println();
+    
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("✅ Wi-Fi Connected!");
+      Serial.print("📌 IP: ");
+      Serial.println(WiFi.localIP());
+      return true;
+    } else {
+      Serial.println("❌ Failed. Cleaning up and trying next...");
+      WiFi.disconnect(true);
+      delay(100);
+    }
+  }
+  
+  Serial.println("⚠️ All Wi-Fi networks failed.");
+  return false;
+}
+
+// ============================================================
 // 📥 Read Settings from Firebase
 // ============================================================
 void fetchSettings() {
-  if (!Firebase.ready()) return;
+  if (!firebaseReady) return;
 
   Serial.println("⚙️ Reading settings from Firebase...");
-
+  
   if (Firebase.getJSON(fbdo, "/settings")) {
-    FirebaseJson &json = fbdo.jsonObject();
+    FirebaseJson json = fbdo.jsonObject();
     FirebaseJsonData jsonData;
-
+    
     if (json.get(jsonData, "temperatureLimit")) {
       TEMP_THRESHOLD = jsonData.stringValue.toFloat();
       Serial.printf("   tempLimit: %.1f°C\n", TEMP_THRESHOLD);
@@ -165,17 +225,16 @@ void fetchSettings() {
 }
 
 // ============================================================
-// 📤 Send Telemetry Data to Firebase (Blue LED Blink Added)
+// 📤 Send Data to Firebase
 // ============================================================
 void sendToFirebase(float temp, float hum, int smoke, bool flame, bool motion, bool alarm) {
-  if (!Firebase.ready() || WiFi.status() != WL_CONNECTED) {
+  if (!firebaseReady || WiFi.status() != WL_CONNECTED) {
     Serial.println("⚠️ Firebase or Wi-Fi not ready.");
     digitalWrite(BLUE_LED, LOW);
     return;
   }
 
-  // 🟢 ডাটা আপলোড শুরু – Blue LED জ্বালান
-  digitalWrite(BLUE_LED, HIGH);
+  digitalWrite(BLUE_LED, HIGH); // Indicate upload start
 
   FirebaseJson json;
   json.set("temperature", temp);
@@ -185,7 +244,7 @@ void sendToFirebase(float temp, float hum, int smoke, bool flame, bool motion, b
   json.set("motion", motion);
   json.set("alarm", alarm);
   json.set("online", true);
-  json.set("timestamp", millis());
+  json.set("timestamp", getEpochMillis());
 
   // Update current sensor readings node
   if (Firebase.setJSON(fbdo, "/current", json)) {
@@ -201,25 +260,33 @@ void sendToFirebase(float temp, float hum, int smoke, bool flame, bool motion, b
     Serial.printf("❌ current/ update failed: %s\n", fbdo.errorReason().c_str());
   }
 
-  // 🔴 ডাটা আপলোড শেষ – Blue LED নিভান
-  digitalWrite(BLUE_LED, LOW);
+  digitalWrite(BLUE_LED, LOW); // Indicate upload end
 }
 
 // ============================================================
 // 🔁 MAIN LOOP
 // ============================================================
 void loop() {
+  // Smart Re-try Wi-Fi connection in the background if it drops
+  if (WiFi.status() != WL_CONNECTED) {
+    if (millis() - lastReconnectAttempt > RECONNECT_COOLDOWN) {
+      lastReconnectAttempt = millis();
+      connectToWiFi(); // This will try ALL networks in your list
+    }
+  }
+
+  // Read Sensors
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
   int mq2_raw = analogRead(MQ2_PIN);
-  bool flame_detected = (digitalRead(FLAME_PIN) == LOW);
+  bool flame_detected = (digitalRead(FLAME_PIN) == LOW); // LOW means flame detected for most modules
   bool motion_detected = (digitalRead(PIR_PIN) == HIGH);
 
+  // Alarm Logic
   bool smoke_high = (mq2_raw > SMOKE_THRESHOLD);
   bool temp_high = (temperature > TEMP_THRESHOLD);
   bool alarm = flame_detected || (smoke_high && temp_high);
 
-  // Alarm control logic
   if (alarm) {
     digitalWrite(BUZZER_PIN, HIGH);
     digitalWrite(RED_LED, HIGH);
@@ -230,10 +297,7 @@ void loop() {
     digitalWrite(GREEN_LED, HIGH);
   }
 
-  // ----- Blue LED এখন আর Wi-Fi স্ট্যাটাস দেখাবে না -----
-  // digitalWrite(BLUE_LED, (WiFi.status() == WL_CONNECTED) ? HIGH : LOW); // <-- সরিয়ে ফেলা হয়েছে
-
-  // Periodically fetch updated settings from cloud
+  // Periodically fetch updated settings from cloud (every 5 seconds)
   if (millis() - lastSettingsCheck > 5000) {
     lastSettingsCheck = millis();
     fetchSettings();

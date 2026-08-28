@@ -42,6 +42,11 @@
     .dark .footer-link:hover { color: #818cf8; }
     #tableContainer::-webkit-scrollbar { width: 4px; }
     #tableContainer::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 8px; }
+    .chart-container { position: relative; min-height: 200px; }
+    .chart-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--bg-card) 78%, transparent); z-index: 1; }
+    .chart-loading.hidden { display: none; }
+    .chart-spinner { width: 2.75rem; height: 2.75rem; border: 4px solid #c7d2fe; border-top-color: #4f46e5; border-radius: 50%; animation: chartSpin 0.8s linear infinite; }
+    @keyframes chartSpin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -104,7 +109,12 @@
     <!-- চার্ট -->
     <div class="card p-4 mb-6">
       <h3 class="font-semibold mb-2 text-gray-700 dark:text-gray-300" data-i18n="history_chart">📈 ঐতিহাসিক ডাটা</h3>
-      <canvas id="historyChart" height="200"></canvas>
+      <div class="chart-container">
+        <div id="chartLoading" class="chart-loading hidden" role="status" aria-live="polite" aria-label="Loading">
+          <div class="chart-spinner"></div>
+        </div>
+        <canvas id="historyChart" height="200"></canvas>
+      </div>
     </div>
 
     <!-- টেবিল -->
@@ -228,6 +238,21 @@
     // ===== ইতিহাস লোড =====
     let chartInstance = null;
 
+    function normalizeTimestamp(value) {
+      if (value && typeof value === 'object' && value.seconds != null) {
+        return Number(value.seconds) * 1000 + Math.floor(Number(value.nanoseconds || 0) / 1000000);
+      }
+      const timestamp = Number(value);
+      if (!Number.isFinite(timestamp) || timestamp < 1000000000) return 0;
+      return timestamp < 100000000000 ? timestamp * 1000 : timestamp;
+    }
+
+    function formatTimestamp(value) {
+      const timestamp = normalizeTimestamp(value);
+      if (!timestamp) return '--';
+      return new Date(timestamp).toLocaleString(currentLang === 'bn' ? 'bn-BD' : 'en-US');
+    }
+
     function getTimeFilter() {
       const val = document.getElementById('filterRange').value;
       const now = Date.now();
@@ -238,6 +263,8 @@
 
     function loadHistory() {
       const minTime = getTimeFilter();
+      const chartLoading = document.getElementById('chartLoading');
+      chartLoading.classList.remove('hidden');
       db.ref('/history').once('value').then(snap => {
         const data = snap.val();
         if (!data) {
@@ -248,7 +275,7 @@
         }
         const keys = Object.keys(data).sort((a, b) => a.localeCompare(b));
         const filtered = keys.filter(k => {
-          const ts = data[k].timestamp || 0;
+          const ts = normalizeTimestamp(data[k].timestamp);
           return minTime === 0 || ts >= minTime;
         });
 
@@ -256,9 +283,9 @@
           `${translations[currentLang].filter_all === 'All' ? 'Total' : 'মোট'} ${filtered.length} ${translations[currentLang].filter_all === 'All' ? 'records' : 'টি রেকর্ড'}`;
 
         const tbody = document.getElementById('historyTableBody');
-        tbody.innerHTML = filtered.map(k => {
+        tbody.innerHTML = filtered.length ? filtered.map(k => {
           const d = data[k];
-          const time = new Date(d.timestamp).toLocaleString(currentLang === 'bn' ? 'bn-BD' : 'en-US');
+          const time = formatTimestamp(d.timestamp);
           return `<tr>
             <td class="px-4 py-2 whitespace-nowrap">${time}</td>
             <td class="px-4 py-2">${d.temperature?.toFixed(1) ?? '--'}</td>
@@ -268,9 +295,9 @@
             <td class="px-4 py-2">${d.motion ? '🚶 হ্যাঁ' : '⏸️ না'}</td>
             <td class="px-4 py-2 ${d.alarm ? 'text-red-600 font-bold' : 'text-green-600'}">${d.alarm ? '🚨 অ্যালার্ম' : '✅ স্বাভাবিক'}</td>
           </tr>`;
-        }).join('');
+        }).join('') : `<tr><td colspan="7" class="text-center py-4 text-gray-400">${translations[currentLang].no_data}</td></tr>`;
 
-        const labels = filtered.map(k => new Date(data[k].timestamp).toLocaleString(currentLang === 'bn' ? 'bn-BD' : 'en-US'));
+        const labels = filtered.map(k => formatTimestamp(data[k].timestamp));
         const tempData = filtered.map(k => data[k].temperature || 0);
         const humData = filtered.map(k => data[k].humidity || 0);
         const smokeData = filtered.map(k => data[k].smoke || 0);
@@ -296,7 +323,9 @@
             }
           }
         });
-      }).catch(err => console.error(err));
+      }).catch(err => console.error(err)).finally(() => {
+        chartLoading.classList.add('hidden');
+      });
     }
 
     window.onload = function() {
