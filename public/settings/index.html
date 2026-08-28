@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Intesense - সেটিংস</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" />
   <link rel="stylesheet" href="https://fonts.maateen.me/siyam-rupali/font.css">
+  <link rel="stylesheet" href="/app.css" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -25,6 +29,7 @@
       --nav-bg: #1e293b;
     }
     body { font-family: 'Siyam Rupali', 'Noto Serif Bengali', serif; background: var(--bg-body); color: var(--text-primary); min-height: 100vh; }
+    body.lang-en { font-family: 'Poppins', sans-serif; }
     .card { background: var(--bg-card); border: 1px solid var(--border-color); box-shadow: var(--shadow); border-radius: 16px; }
     .header-card { background: var(--bg-header); border-bottom: 1px solid var(--border-color); }
     .nav-link { background: var(--nav-bg); color: var(--text-secondary); border: 1px solid var(--border-color); }
@@ -80,23 +85,23 @@
 
   <div class="container mx-auto px-4 py-6 max-w-3xl">
     <div class="card p-6">
-      <h2 class="text-xl font-semibold mb-4">🔧 কনফিগারেশন</h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">ESP32 এই মানগুলো পড়ে এবং স্বয়ংক্রিয়ভাবে আপডেট হয়।</p>
+      <h2 class="text-xl font-semibold mb-4" data-i18n="configuration">🔧 কনফিগারেশন</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-6" data-i18n="settings_help">ESP32 এই মানগুলো পড়ে এবং স্বয়ংক্রিয়ভাবে আপডেট হয়।</p>
       <div class="space-y-4">
-        <div><label class="block text-sm font-medium">⏱ আপলোড ইন্টারভাল (মিলিসেকেন্ড)</label><input id="uploadInterval" type="number" class="mt-1 w-full p-2 border rounded-lg" /><p class="text-xs text-gray-400">যেমন: ৫ সেকেন্ড = ৫০০০</p></div>
-        <div><label class="block text-sm font-medium">🌡️ তাপমাত্রা লিমিট (°C)</label><input id="temperatureLimit" type="number" step="0.1" class="mt-1 w-full p-2 border rounded-lg" /></div>
-        <div><label class="block text-sm font-medium">🔥 ধোঁয়া/গ্যাস লিমিট (ADC মান)</label><input id="smokeLimit" type="number" class="mt-1 w-full p-2 border rounded-lg" /></div>
-        <div><label class="block text-sm font-medium">💧 আর্দ্রতা লিমিট (%)</label><input id="humidityLimit" type="number" step="0.1" class="mt-1 w-full p-2 border rounded-lg" /></div>
+        <div><label class="block text-sm font-medium" data-i18n="upload">⏱ আপলোড ইন্টারভাল (মিলিসেকেন্ড)</label><input id="uploadInterval" type="number" class="mt-1 w-full p-2 border rounded-lg" /><p class="text-xs text-gray-400" data-i18n="upload_hint">যেমন: ৫ সেকেন্ড = ৫০০০</p></div>
+        <div><label class="block text-sm font-medium" data-i18n="temperature">🌡️ তাপমাত্রা লিমিট (°C)</label><input id="temperatureLimit" type="number" step="0.1" class="mt-1 w-full p-2 border rounded-lg" /></div>
+        <div><label class="block text-sm font-medium" data-i18n="smoke">🔥 ধোঁয়া/গ্যাস লিমিট (ADC মান)</label><input id="smokeLimit" type="number" class="mt-1 w-full p-2 border rounded-lg" /></div>
+        <div><label class="block text-sm font-medium" data-i18n="humidity">💧 আর্দ্রতা লিমিট (%)</label><input id="humidityLimit" type="number" step="0.1" class="mt-1 w-full p-2 border rounded-lg" /></div>
       </div>
       <div class="flex gap-4 mt-6">
-        <button onclick="saveSettings()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">💾 সংরক্ষণ করুন</button>
-        <button onclick="loadSettings()" class="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-6 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">🔄 রিফ্রেশ</button>
+        <button onclick="saveSettings()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition" data-i18n="save">💾 সংরক্ষণ করুন</button>
+        <button onclick="loadSettings()" class="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-6 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition" data-i18n="refresh">🔄 রিফ্রেশ</button>
       </div>
       <div id="statusMessage" class="mt-4 text-sm font-medium"></div>
     </div>
 
     <div class="mt-6 card p-4 border-l-4 border-blue-500">
-      <h3 class="font-semibold text-blue-700 dark:text-blue-400">📌 বর্তমান মান</h3>
+      <h3 class="font-semibold text-blue-700 dark:text-blue-400" data-i18n="current_values">📌 বর্তমান মান</h3>
       <div id="currentVals" class="text-sm mt-2 space-y-1"></div>
     </div>
   </div>
@@ -106,6 +111,24 @@
   </div>
 
   <script>
+    const translations = {
+      bn: { nav_dashboard: 'ড্যাশবোর্ড', nav_history: 'ইতিহাস', nav_settings: 'সেটিংস', logout: 'প্রস্থান', configuration: '🔧 কনফিগারেশন', settings_help: 'ESP32 এই মানগুলো পড়ে এবং স্বয়ংক্রিয়ভাবে আপডেট হয়।', upload: '⏱ আপলোড ইন্টারভাল (মিলিসেকেন্ড)', upload_hint: 'যেমন: ৫ সেকেন্ড = ৫০০০', temperature: '🌡️ তাপমাত্রা লিমিট (°C)', smoke: '🔥 ধোঁয়া/গ্যাস লিমিট (ADC মান)', humidity: '💧 আর্দ্রতা লিমিট (%)', save: '💾 সংরক্ষণ করুন', refresh: '🔄 রিফ্রেশ', current_values: '📌 বর্তমান মান' },
+      en: { nav_dashboard: 'Dashboard', nav_history: 'History', nav_settings: 'Settings', logout: 'Logout', configuration: '🔧 Configuration', settings_help: 'The ESP32 reads these values and updates automatically.', upload: '⏱ Upload interval (milliseconds)', upload_hint: 'Example: 5 seconds = 5000', temperature: '🌡️ Temperature limit (°C)', smoke: '🔥 Smoke/gas limit (ADC)', humidity: '💧 Humidity limit (%)', save: '💾 Save settings', refresh: '🔄 Refresh', current_values: '📌 Current values' }
+    };
+    let currentLang = localStorage.getItem('lang') || 'bn';
+    function setLanguage(lang) {
+      currentLang = lang;
+      localStorage.setItem('lang', lang);
+      document.documentElement.lang = lang;
+      document.body.classList.toggle('lang-en', lang === 'en');
+      document.querySelectorAll('[data-i18n]').forEach(el => { if (translations[lang][el.dataset.i18n]) el.innerHTML = translations[lang][el.dataset.i18n]; });
+      document.getElementById('langBn').classList.toggle('active-lang', lang === 'bn');
+      document.getElementById('langEn').classList.toggle('active-lang', lang === 'en');
+    }
+    setLanguage(currentLang);
+    document.getElementById('langBn').addEventListener('click', () => setLanguage('bn'));
+    document.getElementById('langEn').addEventListener('click', () => setLanguage('en'));
+
     const firebaseConfig = { apiKey: "AIzaSyA8WKGXIAioDQ14Q_z1XpaJvCUkTvBD6_I", authDomain: "intesense-ae5aa.firebaseapp.com", databaseURL: "https://intesense-ae5aa-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "intesense-ae5aa", storageBucket: "intesense-ae5aa.firebasestorage.app", messagingSenderId: "945696306096", appId: "1:945696306096:web:571d1726277182b0f35c75", measurementId: "G-H9VJCRJWD2" };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
